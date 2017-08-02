@@ -334,12 +334,12 @@ get_isd_station_data <- function(station_id,
       
       # Remove select columns from data frame
       data <- 
-        data[, c(2:8, 10:11, 13, 16, 19, 21, 29, 31, 33)]
+        data[, c(2:8, 10:13, 16, 19, 21, 29, 31, 33)]
       
       # Apply new names to the data frame columns
       names(data) <-
         c("usaf", "wban", "year", "month",
-          "day", "hour", "minute", "lat", "lon",
+          "day", "hour", "minute", "lat", "lon", "report_type",
           "elev", "wd", "ws", "ceil_hgt",
           "temp", "dew_point", "atmos_pres")
       
