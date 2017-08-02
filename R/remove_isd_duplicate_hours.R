@@ -1,4 +1,5 @@
 # Todo: Documentation
+# Todo: Handle more report types
 
 clean_isd <- function(x) {
   met_dataclean <- x %>%
@@ -19,18 +20,46 @@ clean_isd <- function(x) {
       met_dataclean[c("year", "month", "day", "hour", "usaf", "wban")],
       fromLast = TRUE)
   
-  met_data_nospec <- subset(met_dataclean, !duplicate | report_type == "FM-15")
+  met_data_nospec <- met_dataclean %>%
+    subset(!duplicate | report_type == "FM-15")
   
-  last_hour <- met_data_nospec %>%
-    group_by(year, month, day, hour, usaf, wban) %>%
-    summarize(minute = max(minute)) %>%
-    mutate(is_last = TRUE)
+  met_data_nospec$duplicate <- duplicated(
+    met_data_nospec[c("year", "month", "day", "hour", "usaf", "wban")]) |
+    duplicated(
+      met_data_nospec[c("year", "month", "day", "hour", "usaf", "wban")],
+      fromLast = TRUE)
   
-  met_data_last <- left_join(met_data_nospec, last_hour)
+ 
+  met_data_dup <- met_data_nospec[met_data_nospec$duplicate,]
+  met_data_nodup <- met_data_nospec[!met_data_nospec$duplicate,]
   
-  met_data_final <- met_data_last %>%
-    filter(is_last) %>%
-    select(-duplicate, -is_last)
-  
+  out_data <- NULL
+  unique_vals <- unique(met_data_dup[met_data_dup$duplicate, c("year", "month", 
+                                        "day", "hour", "usaf", "wban")]) 
+  for (i in 1:nrow(unique_vals)) {
+    trow <- unique_vals[i,]
+    tdata <- inner_join(met_data_dup, trow)
+    tdata <- tdata[order(tdata$year, tdata$month,
+                         tdata$day, tdata$hour, 
+                         tdata$minute),]
+    # Find the last non-na value for each column
+    final_row <- tdata[nrow(tdata),]
+
+    # Check NAs
+    for (n in c("wd", "ws", "ceil_hgt", "temp", "dew_point",
+                "atmos_pres", "rh", "aa1_2")) {
+      if (is.na(final_row[n])) {
+        wds <- tdata[!is.na(tdata[n]), n]
+        final_row[n] <-  wds[length(wds)]
+      }
+    }
+    out_data <- rbind(out_data, final_row)
+  }
+
+  met_data_final <- out_data %>%
+    rbind(met_data_nodup) %>%
+    select(-duplicate)
+
   met_data_final
 }
+
